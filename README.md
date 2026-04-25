@@ -17,3 +17,14 @@ I first visited their youtube video game trailer that they have sent to me. The 
 The download button just linked you to a DropBox download. The file name was `InnerEvilSetup.exe` with the size of `59.43MB`. The author of this DropBox link was `alone`, clearly showing that most "hackers" are losers.
 
 *You should always use a VPN or TOR when entering shady websites*
+
+<table>
+  <tr>
+    <th>Website</th>
+    <th>DropBox Downlaod</th>
+  </tr>
+  <tr>
+    <td><img src="pictures/website.png" alt="website page" width=1000px></td>
+    <td><img src="pictures/download.png" alt="download page" width=1000px></td>
+  </tr>
+</table>
