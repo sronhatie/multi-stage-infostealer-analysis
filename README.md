@@ -27,11 +27,20 @@ The download button just linked you to a Dropbox download. The file name was `In
   </tr>
 </table>
 
-Once the victim regained their credentials, they apologized and told me what had happened.
+Once the victim regained access to their account, they apologized and told me what had happened.
 
 In the email shown below, the sender demanded $150 from the victim in exchange for returning accounts and deleting stolen information. They claimed that malware was still running on the victim's computer and threatened further data theft if the demand was not met.
 
 <img src="pictures/threat.jpg" alt="Email demanding $150" width="500">
+
+## Tools and assistance
+
+| Tool | How I used it |
+|---|---|
+| VirtualBox | Providing a virtual machine for the analysis. |
+| Universal Extractor | Extracting the files packaged inside `InnerEvilSetup.exe`. |
+| Custom JavaScript capture script | Intercepting the source passed to `new Function()` and saving it for inspection. |
+| LLM | Helping interpret the obfuscated code and reconstruct readable JavaScript, and make this document somewhat readable |
 
 ## How I extracted the code from an .exe
 
@@ -96,9 +105,26 @@ try {
 
 2. Deobfuscating the code and printing the payload source. Although this takes more time and you have to deobfuscate it correctly otherwise you will just get nonsense.
 
+## Deobfuscating the recovered payload
+
+Recovering the payload did not immediately produce readable code. It still contained obfuscated identifiers, complicated control flow, and helper functions that retrieved strings and other constants from a shared lookup table.
+
+I worked through this by trial and error, identifying the shared table and using an LLM to help understand the lookups and reconstruct more readable code. Resolving these references helped expose the operations hidden behind the obfuscation.
+
+Some parts of the reconstruction remain incomplete, so the result is a partial reconstruction of the payload.
+
+```js
+// expression in the captured payload:
+crypto[__p_8559529661_dLR_0__JS_PREDICT__(-0x2e) + 'Hash']
+
+// the lookup returns "create", so this resolves to:
+crypto.createHash
+```
+
 ## Stage Breakdown
 
 Stage 1 -> Stage 3
+
 Stage 2 -> Stage 4
 
 ### Stage 1: Discord Loader
