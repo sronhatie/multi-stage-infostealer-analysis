@@ -127,6 +127,8 @@ Stage 1 -> Stage 3
 
 Stage 2 -> Stage 4
 
+*Some parts of the reconstruction remain incomplete. The capabilities described are based on the recovered source.*
+
 ### Stage 1: Discord Loader
 
 The Discord loader contains a JavaScript payload protected by the encoding and encryption layers described above. Everything is included in the loader, thus allowing the payload to be recovered without contacting an external server.
@@ -139,7 +141,7 @@ Removing the outer encryption layer exposes another layer of JavaScript that is 
 
 ### Stage 2: Crypted Loader
 
-This stage uses the same general idea as Stage 1. I have not deobfuscated this code, so I have no idea if it uses the same values as the first loader.
+This stage uses the same general idea as Stage 1. I used the same `new Function()` approach. I have not deobfuscated this code, so I have no idea if it uses the same values as the first loader.
 
 *The payload recovered is the code analyzed in Stage 4.*
 
@@ -180,8 +182,6 @@ During the investigation, I found a promotional post on Telegram for the malware
 This is not intended to be a full report. If you’re curious, Related research links to a more detailed analysis. I did this for fun and curiosity, although it took far more hours out of my life than I expected.
 
 Working through the payload made me realize how scary malware can be. Some parts of the code felt patched together, but I have not established whether they were adapted from another stealer.
-
-Some parts of the reconstruction remain incomplete. The capabilities described are based on the recovered source
 
 ## Related research
 
