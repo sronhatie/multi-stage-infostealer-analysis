@@ -94,16 +94,35 @@ try {
 
 ### Stage 1: Discord Loader
 
-This stage is heavily obfuscated and mainly acts as a loader. Before execution, it decrypts the next payload and passes the recovered JavaScript source into `new Function()`. This allows the next stage to run dynamically without appearing as a normal readable file on disk.
+The Discord loader contains a JavaScript payload protected by the encoding and encryption layers described above. Everything is included in the loader, thus allowing the payload to be recovered without contacting an external server.
+
+After decryption, the loader passes the recovered source to `new Function()` and calls the resulting function. The decrypted code is passed directly into the function constructor without being saved as a separate JavaScript file.
+
+Removing the outer encryption layer exposes another layer of JavaScript that is obfuscated.
+
+The payload recovered is the code analyzed in Stage 3.
 
 ### Stage 2: Crypter Loader
 
 This stage uses the same general idea as Stage 1.
 
-### Stage 3: Stealer core
+### Stage 3: Discord Injection
 
-This stage contains the main data-theft logic. It targets Discord/account data, browser data, cookies, passwords, sessions, wallet-related files, and system identifiers. It also prepares stolen data for reporting and sends it to the attacker's infrastructure using JSON POST requests.
+The payload recovered from Stage 1 is designed to run inside Discord’s Electron environment. Its main purpose is to capture Discord credentials and authentication tokens by monitoring selected API requests and responses.
+
+It selects the first available `BrowserWindow`, attaches to its `webContents.debugger`, and enables network monitoring with `Network.enable`. When a `Network.responseReceived` event matches its configured URL filters, it retrieves the response body using `Network.getResponseBody` and the request body using `Network.getRequestPostData`.
+
+For login and registration requests, this gives the payload access to credentials submitted in the request and the authentication token returned in the response. These values are passed to the `EmailPassToken()` function. If a login response does not contain a token, the code temporarily stores the submitted login and password.
+
+The reporting function uses the captured token to request additional account information, including the account’s phone number, badges, MFA status, and the presence of saved payment methods. It also retrieves the victim’s public IP address. These details are combined with the captured credentials and token into a structured report, then sent as JSON to the reporting endpoint.
+
+The file ends with `module.exports = require('./core.asar')`, which suggests that the injected code is intended to run alongside Discord’s original core module.
 
 ### Stage 4: Reproting and Sessions
 
 This stage handles communication with the backend/C2 infrastructure. It reports victim information, sends collected data, and includes panel/session features that appear designed to let the operator monitor or interact with infected systems.
+
+
+## Related research
+
+While preparing this, I found Ransom-ISAC’s [ShinyHunters: Silent Malware as a Service (MaaS)](https://ransom-isac.org/blog/shinyhunters-silent-maas/), published on May 26, 2026. Their report examines `Illusion-2.6.5-setup.exe` and provides further analysis of Silent Stealer.
