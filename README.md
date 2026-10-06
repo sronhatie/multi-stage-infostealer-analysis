@@ -1,25 +1,25 @@
-# Reverse Engineering MaaS 
+# Reverse Engineering Malware-as-a-Service (MaaS) 
 
 ## Overview
 
 Found this malware because of a "try my game" social-engineering message on Discord. Wanted to figure out what it does / how it works.
 
-At first I thought it would take me a few hours to figure it out, but I was wrong. After a few days of spending countless hours on it, I have reconstructed the code and now know how it works.
+At first I thought it would take me a few hours to figure it out, but I was wrong. After a few days of spending countless hours on it, I have recovered much of the code and traced its main behavior.
 
 In this document I will explain what data it steals, how it steals said data and what methods it uses to obfuscate its code.
 
 ## Backstory
 
-Someone I knew on Discord messaged me and asked me if I could try their game out for 5 minutes. Told me it was their project for college. Although, once I asked a few question about it, they quickly removed me from their friends list. All of this was very suspicious so I went in thinking that it had some sort of malware. 
+Someone I knew on Discord messaged me and asked me if I could try their game out for 5 minutes. Told me it was their project for college. Although, once I asked a few questions about it, they quickly removed me from their friends list. All of this was very suspicious so I went in thinking that it had some sort of malware. 
 
-I first visited their youtube video game trailer that they have sent to me. The video had a few thousand views and a decent amount of positive comments. In the comments, they included their website. The website looked well made.
+I first visited their YouTube video game trailer that they have sent to me. The video had a few thousand views and a decent amount of positive comments. In the comments, they included their website. The website looked well made.
 
 The download button just linked you to a Dropbox download. The file name was `InnerEvilSetup.exe` with the size of `59.43MB`. The author of this Dropbox link was `alone`.
 
 <table>
   <tr>
     <th>Website</th>
-    <th>DropBox Downlaod</th>
+    <th>Dropbox Downlaod</th>
   </tr>
   <tr>
     <td><img src="pictures/website.png" alt="website page" width=1000px></td>
@@ -27,11 +27,13 @@ The download button just linked you to a Dropbox download. The file name was `In
   </tr>
 </table>
 
-In the email shown below, the sender demanded $150 in exchange for returning accounts and deleting stolen information. They claimed that malware was still running on the victims computer and threatened further data theft if the demand was not met.
+Once the victim regained their credentials, they apologized and told me what had happened.
+
+In the email shown below, the sender demanded $150 from the victim in exchange for returning accounts and deleting stolen information. They claimed that malware was still running on the victim's computer and threatened further data theft if the demand was not met.
 
 <img src="pictures/threat.jpg" alt="Email demanding $150" width="500">
 
-## How I extracted the code from a .exe
+## How I extracted the code from an .exe
 
 I did not want to infect my whole system, so I used VirtualBox. 
 
@@ -41,9 +43,9 @@ At first glance, the files looked like something from a normal Electron app, but
 
 <img src=pictures/script.png alt="script folder">
 
-The file names were `crypted.js` and `discord-injection-obf.js`, so from the file names it tells us that it targets discord.
+The file names were `crypted.js` and `discord-injection-obf.js`, the file names suggest that it targets Discord.
 
-Although these two files were not the main files, they were just loaders. The loader first joins the embedded Base64 chunks, decodes them, and applies XOR with 0xDA to each byte. This produces a Base64-encoded ciphertext.
+Although these two files were not the main files, they were just loaders. The loader in `discord-injection-obf.js` first joins the embedded Base64 chunks, decodes them, and applies XOR with 0xDA to each byte. This produces a Base64-encoded ciphertext.
 
 It then uses pbkdf2Sync() to derive a 32-byte key from a hardcoded password and salt. The payload is decrypted using AES-256-CBC: `crypto.createDecipheriv()` creates the decipher with that key and the stored initialization vector, while `decipher.update()` and `decipher.final()` perform the decryption.
 
@@ -96,6 +98,9 @@ try {
 
 ## Stage Breakdown
 
+Stage 1 -> Stage 3
+Stage 2 -> Stage 4
+
 ### Stage 1: Discord Loader
 
 The Discord loader contains a JavaScript payload protected by the encoding and encryption layers described above. Everything is included in the loader, thus allowing the payload to be recovered without contacting an external server.
@@ -104,11 +109,13 @@ After decryption, the loader passes the recovered source to `new Function()` and
 
 Removing the outer encryption layer exposes another layer of JavaScript that is obfuscated.
 
-The payload recovered is the code analyzed in Stage 3.
+*The payload recovered is the code analyzed in Stage 3.*
 
-### Stage 2: Crypter Loader
+### Stage 2: Crypted Loader
 
-This stage uses the same general idea as Stage 1.
+This stage uses the same general idea as Stage 1. I have not deobfuscated this code, so I have no idea if it uses the same values as the first loader.
+
+*The payload recovered is the code analyzed in Stage 4.*
 
 ### Stage 3: Discord Injection
 
@@ -122,15 +129,33 @@ The reporting function uses the captured token to request additional account inf
 
 The file ends with `module.exports = require('./core.asar')`, which suggests that the injected code is intended to run alongside Discord’s original core module.
 
-### Stage 4: Reproting and Sessions
+### Stage 4: Data Theft and Remote Control
 
-This stage handles communication with the backend/C2 infrastructure. It reports victim information, sends collected data, and includes panel/session features that appear designed to let the operator monitor or interact with infected systems.
+This contains the main routines for collecting stored credentials and session data, reporting the results and remotely interacting with the victim's system.
 
-# How Silent Stealer was advertised
+The collection logic is divided across several functions. `GetToken()` searches for stored Discord tokens, while `scanDiscordBackupCodes()` searches for files containing backup codes. `runBrowserExtraction()` targets browser cookies, saved passwords, autofill information, and stored payment card data. Other routines target wallet-related files and application data from Telegram, Steam, Minecraft, Valorant, Roblox and TikTok.
 
-During the investigation, I found a promotional post on telegram for the malware. It was not difficult to find since they use `mainsilent` in the code.
+Several routines save their results locally, package them into ZIP and upload them to GoFile. The reporting code sends JSON messages to the API, including collected account information, system details and links to uploaded files.
+
+Some routines also attempt to establish persistence through scheduled tasks and startup entries. Additionally, some attempt to obtain administrator privileges and add Windows Defender exclusions.
+
+The remote-control component includes a WebSocket client and handlers for commands received from the backend. These handlers cover screen capture and streaming, file browsing and downloads, PowerShell command execution, and downloading and running additional executables. Other commands display messages, play sounds, open URLs, or trigger another round of data collection.
+
+These routines indicate that the component was designed to function as both an information stealer and a remote access trojan (RAT).
+
+## How Silent Stealer was advertised
+
+During the investigation, I found a promotional post on Telegram for the malware. It was not difficult to find since they use `mainsilent` in the code.
 
 <img src="pictures/telegram.jpg" alt="Silent St3aler telegram post" width="500">
+
+## Conclusion
+
+This is not intended to be a full report. If you’re curious, Related research links to a more detailed analysis. I did this for fun and curiosity, although it took far more hours out of my life than I expected.
+
+Working through the payload made me realize how scary malware can be. Some parts of the code felt patched together, but I have not established whether they were adapted from another stealer.
+
+Some parts of the reconstruction remain incomplete. The capabilities described are based on the recovered source
 
 ## Related research
 
