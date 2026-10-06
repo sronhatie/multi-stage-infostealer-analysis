@@ -12,11 +12,9 @@ In this document I will explain what data it steals, how it steals said data and
 
 Someone I knew on Discord messaged me and asked me if I could try their game out for 5 minutes. Told me it was their project for college. Although, once I asked a few question about it, they quickly removed me from their friends list. All of this was very suspicious so I went in thinking that it had some sort of malware. 
 
-I first visited their youtube video game trailer that they have sent to me. The video had a few thousand views and a decent amount of positive comments. In the comments, they included their website. The website looked well made, although it was most likely made with ChatGPT as the code included an image with ChatGPT in its file name.
+I first visited their youtube video game trailer that they have sent to me. The video had a few thousand views and a decent amount of positive comments. In the comments, they included their website. The website looked well made.
 
-The download button just linked you to a Dropbox download. The file name was `InnerEvilSetup.exe` with the size of `59.43MB`. The author of this Dropbox link was `alone`, clearly showing that most "hackers" are losers.
-
-*You should always use a VPN or TOR when entering shady websites*
+The download button just linked you to a Dropbox download. The file name was `InnerEvilSetup.exe` with the size of `59.43MB`. The author of this Dropbox link was `alone`.
 
 <table>
   <tr>
@@ -33,7 +31,7 @@ The download button just linked you to a Dropbox download. The file name was `In
 
 I did not want to infect my whole system, so I used VirtualBox. 
 
-Since `.exe` files are just archived files, I could have changed the file format from `.exe` to `.zip` and I could have extracted it that way, but I used something called `Universal Extractor` to extract the files for me.
+I used something called `Universal Extractor` to extract the files.
 
 At first glance, the files looked like something from a normal Electron app, but it also included a folder `script/`
 
@@ -41,9 +39,41 @@ At first glance, the files looked like something from a normal Electron app, but
 
 The file names were `crypted.js` and `discord-injection-obf.js`, so from the file names it tells us that it targets discord.
 
-Although these two files were not the main files, they were just loaders. They were also encrypting the next code instructions by doing `byte XOR 0xDA` and afterwards decrypting it with pbkdf2Sync(). Once decrypted it runs `new Function()` with the whole decrypted code stored in a variable. So there are two ways that I have managed to get the same next stage code:
+Although these two files were not the main files, they were just loaders. The loader first joins the embedded Base64 chunks, decodes them, and applies XOR with 0xDA to each byte. This produces a Base64-encoded ciphertext.
 
-1. Hooking into the code before `new Function()` and extracting the real payload source.
+It then uses pbkdf2Sync() to derive a 32-byte key from a hardcoded password and salt. The payload is decrypted using AES-256-CBC: `crypto.createDecipheriv()` creates the decipher with that key and the stored initialization vector, while `decipher.update()` and `decipher.final()` perform the decryption.
+
+Finally, the recovered JavaScript is passed to new Function(), and the resulting function is called to execute it.
+
+```js
+// embedded payload chunks, password, salt and IV omitted.
+
+const ciphertextB64 = Buffer.from(
+    encodedPayloadChunk1 + encodedPayloadChunk2 + encodedPayloadChunk3,
+    'base64'
+).map(byte => byte ^ 0xDA).toString('utf8');
+
+const key = crypto.pbkdf2Sync(
+    password,
+    Buffer.from(saltB64, 'base64'),
+    50000,
+    32,
+    'sha256'
+);
+
+const decipher = crypto.createDecipheriv(
+    'aes-256-cbc',
+    key,
+    Buffer.from(ivB64, 'base64')
+);
+
+const payloadSource =
+    decipher.update(ciphertextB64, 'base64', 'utf8') + decipher.final('utf8');
+```
+
+There are two ways that I have managed to get the same next stage code:
+
+1. Hooking into the code before `new Function()` and extracting the real payload source. The snippet I provide does not make you safe from harm as the code before new Function() still runs. 
 
 ```js
 try {
