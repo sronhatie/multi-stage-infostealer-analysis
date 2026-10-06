@@ -27,6 +27,10 @@ The download button just linked you to a Dropbox download. The file name was `In
   </tr>
 </table>
 
+In the email shown below, the sender demanded $150 in exchange for returning accounts and deleting stolen information. They claimed that malware was still running on the victims computer and threatened further data theft if the demand was not met.
+
+<img src="pictures/threat.jpg" alt="Email demanding $150" width="500">
+
 ## How I extracted the code from a .exe
 
 I did not want to infect my whole system, so I used VirtualBox. 
@@ -122,6 +126,11 @@ The file ends with `module.exports = require('./core.asar')`, which suggests tha
 
 This stage handles communication with the backend/C2 infrastructure. It reports victim information, sends collected data, and includes panel/session features that appear designed to let the operator monitor or interact with infected systems.
 
+# How Silent Stealer was advertised
+
+During the investigation, I found a promotional post on telegram for the malware. It was not difficult to find since they use `mainsilent` in the code.
+
+<img src="pictures/telegram.jpg" alt="Silent St3aler telegram post" width="500">
 
 ## Related research
 
